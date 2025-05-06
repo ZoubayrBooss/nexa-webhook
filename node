@@ -1,0 +1,72 @@
+const express = require('express');
+const bodyParser = require('body-parser');
+const request = require('request');
+
+const app = express();
+app.use(bodyParser.json());
+
+const PAGE_ACCESS_TOKEN = 'your_page_access_token'; // Replace with your actual token
+
+// Webhook verification endpoint (to verify Facebook webhook URL)
+app.get('/webhook', (req, res) => {
+  const VERIFY_TOKEN = 'PFAOP'; // Replace with your own verification token
+
+  const mode = req.query['hub.mode'];
+  const token = req.query['hub.verify_token'];
+  const challenge = req.query['hub.challenge'];
+
+  if (mode && token) {
+    if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+      console.log('Webhook verified');
+      res.status(200).send(challenge);
+    } else {
+      res.sendStatus(403);
+    }
+  }
+});
+
+// Handle messages sent to your bot
+app.post('/webhook', (req, res) => {
+  const body = req.body;
+
+  // Make sure this is a page subscription
+  if (body.object === 'page') {
+    body.entry.forEach(entry => {
+      const messaging = entry.messaging[0];
+      const senderId = messaging.sender.id;
+      const message = messaging.message.text;
+
+      // Call your Dialogflow webhook to get a response
+      // Send the response to the user using the Facebook API
+      sendTextMessage(senderId, `You said: ${message}`);
+    });
+    res.status(200).send('EVENT_RECEIVED');
+  } else {
+    res.sendStatus(404);
+  }
+});
+
+// Function to send a text message back to the user
+function sendTextMessage(senderId, text) {
+  const messageData = {
+    recipient: { id: senderId },
+    message: { text: text },
+  };
+
+  request({
+    url: 'https://graph.facebook.com/v13.0/me/messages',
+    method: 'POST',
+    qs: { access_token: PAGE_ACCESS_TOKEN },
+    json: messageData,
+  }, (error, response, body) => {
+    if (error) {
+      console.log('Error sending message: ', error);
+    } else if (response.body.error) {
+      console.log('Error response body: ', response.body.error);
+    }
+  });
+}
+
+app.listen(5000, () => {
+  console.log('Webhook server is running');
+});

@@ -10,6 +10,7 @@ app.post('/webhook', (req, res) => {
   
     let response = '';
   
+    // Report status logic
     if (intent === 'report_status') {
       if (room && device) {
         response = `Your ${device} in the ${room} has used about 2.1 kWh this week. That ${device} is running efficiently today.`;
@@ -22,6 +23,7 @@ app.post('/webhook', (req, res) => {
       }
     }
   
+    // Suggest improvement logic
     else if (intent === 'suggest_improvement') {
       if (room && device) {
         response = `To improve energy efficiency, try turning off the ${device} in the ${room} when not in use, and ensure it's well-maintained.`;
@@ -34,6 +36,21 @@ app.post('/webhook', (req, res) => {
       }
     }
   
+    // General energy tips logic
+    else if (intent === 'general_energy_tips') {
+      const tips = [
+        "Switch to LED lighting to reduce electricity use.",
+        "Unplug devices when they’re not in use to avoid phantom loads.",
+        "Use natural light during the day to cut lighting costs.",
+        "Set your thermostat 1–2°C lower to save energy on heating.",
+        "Do full laundry loads instead of multiple small ones.",
+        "Switch to energy-efficient appliances for long-term savings."
+      ];
+      const randomTip = tips[Math.floor(Math.random() * tips.length)];
+      response = `Here's a tip: ${randomTip}`;
+    }
+  
+    // Fallback response if no matching intent is found
     else {
       response = "I'm not sure how to help with that yet, but I'm learning more every day!";
     }

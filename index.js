@@ -1,6 +1,9 @@
 app.post('/webhook', (req, res) => {
     const parameters = req.body.queryResult.parameters;
-    const intent = req.body.queryResult.intent.displayName;
+    const intentName = req.body.queryResult.intent.displayName;
+  
+    // Normalize the intent name to lowercase with underscores
+    const intent = intentName.toLowerCase().replace(/\s+/g, '_');
   
     const room = parameters['room'];
     const device = parameters['device_type'];
@@ -29,6 +32,10 @@ app.post('/webhook', (req, res) => {
       } else {
         response = `You can reduce waste by unplugging idle devices and switching to more efficient appliances.`;
       }
+    }
+  
+    else {
+      response = "I'm not sure how to help with that yet, but I'm learning more every day!";
     }
   
     res.json({ fulfillmentText: response });

@@ -1,17 +1,30 @@
 {
-    "name": "nexa-chatbot",
+    "name": "nexa-webhook",
     "version": "1.0.0",
-    "description": "A chatbot for home automation",
-    "main": "app.js",
-    "dependencies": {
-      "express": "^4.17.1",
-      "body-parser": "^1.19.0",
-      "request": "^2.88.2"
-    },
+    "description": "Webhook server for Nexa smart home assistant",
+    "main": "index.js",
     "scripts": {
-      "start": "node app.js"
+        "start": "node index.js",
+        "dev": "nodemon index.js"
+    },
+    "dependencies": {
+        "body-parser": "^1.20.3",
+        "dotenv": "^8.2.0",
+        "express": "^4.21.2",
+        "request": "^2.88.2"
+    },
+    "devDependencies": {
+        "nodemon": "^2.0.7"
     },
     "author": "Zoubayr Ridha",
-    "license": "ISC"
-  }
-  
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/ZoubayrBooss/nexa-webhook.git"
+    },
+    "keywords": [],
+    "bugs": {
+        "url": "https://github.com/ZoubayrBooss/nexa-webhook/issues"
+    },
+    "homepage": "https://github.com/ZoubayrBooss/nexa-webhook#readme"
+}

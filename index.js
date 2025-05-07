@@ -5,7 +5,7 @@ const request = require('request');
 const app = express();
 app.use(bodyParser.json());
 
-const PAGE_ACCESS_TOKEN = 'your_page_access_token'; // Replace with your actual token
+const PAGE_ACCESS_TOKEN = '594054900466217'; // Replace with your actual token
 
 // Facebook webhook verification
 app.get('/webhook', (req, res) => {

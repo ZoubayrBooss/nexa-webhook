@@ -26,17 +26,17 @@ app.get('/webhook', (req, res) => {
 // POST /webhook for both Facebook & Dialogflow
 app.post('/webhook', (req, res) => {
   // Check if it's from Facebook Messenger
-  if (req.body.object === 'page') {
-    req.body.entry.forEach(entry => {
-      const messaging = entry.messaging[0];
-      const senderId = messaging.sender.id;
-      const message = messaging.message?.text || '';
-
-      // Simple echo (for now, or connect to Dialogflow API)
+  req.body.entry.forEach(entry => {
+    const messaging = entry.messaging[0];
+    const senderId = messaging.sender.id;
+    const message = messaging.message?.text || '';
+  
+    // Avoid replying to bot's own message (to prevent spam)
+    if (senderId !== '<YOUR_BOT_PAGE_ID>') {
       sendTextMessage(senderId, `You said: ${message}`);
-    });
-    return res.status(200).send('EVENT_RECEIVED');
-  }
+    }
+  });
+  
 
   // Else, assume it's Dialogflow webhook
   const parameters = req.body.queryResult?.parameters || {};

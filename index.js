@@ -32,7 +32,7 @@ app.post('/webhook', (req, res) => {
     const message = messaging.message?.text || '';
   
     // Avoid replying to bot's own message (to prevent spam)
-    if (senderId !== '<YOUR_BOT_PAGE_ID>') {
+    if (senderId !== '594054900466217') {
       sendTextMessage(senderId, `You said: ${message}`);
     }
   });

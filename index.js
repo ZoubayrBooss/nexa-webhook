@@ -40,8 +40,16 @@ app.post('/webhook', (req, res) => {
         // Optionally log the message
         console.log(`[FB] Message from ${senderId}: ${message}`);
 
-        // Respond
-        sendTextMessage(senderId, `You said: ${message}`);
+        // Send the message to Dialogflow and handle the response
+        sendToDialogflow(message)
+          .then(dialogflowResponse => {
+            // Send Dialogflow response back to the user
+            sendTextMessage(senderId, dialogflowResponse);
+          })
+          .catch(error => {
+            console.error('Error processing Dialogflow response:', error);
+            sendTextMessage(senderId, "Sorry, something went wrong. Please try again later.");
+          });
       });
     });
     res.sendStatus(200);
@@ -115,6 +123,37 @@ function sendTextMessage(senderId, text) {
     } else {
       console.log(`✅ Message sent to ${senderId}: "${text}"`);
     }
+  });
+}
+
+// Function to send the user's message to Dialogflow and get a response
+function sendToDialogflow(message) {
+  return new Promise((resolve, reject) => {
+    const dialogflowUrl = 'https://api.dialogflow.com/v1/query?v=20150910';
+    const dialogflowToken = 'YOUR_DIALOGFLOW_ACCESS_TOKEN'; // Replace with your Dialogflow token
+
+    const body = {
+      query: message,
+      lang: 'en',
+      sessionId: '12345'  // Session ID, ideally dynamic or user-specific
+    };
+
+    request({
+      url: dialogflowUrl,
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${dialogflowToken}`,
+        'Content-Type': 'application/json'
+      },
+      json: body
+    }, (error, response, body) => {
+      if (error || response.statusCode !== 200) {
+        reject(error || body);
+      } else {
+        const fulfillmentText = body.result.fulfillment.speech; // Dialogflow response
+        resolve(fulfillmentText);
+      }
+    });
   });
 }
 

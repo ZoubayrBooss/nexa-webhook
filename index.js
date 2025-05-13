@@ -23,7 +23,7 @@ app.get('/webhook', (req, res) => {
   }
 });
 
-// POST webhook
+// POST webhook (Facebook + Dialogflow)
 app.post('/webhook', (req, res) => {
   // ---------- 1. Facebook Messenger webhook ----------
   if (req.body.object === 'page') {
@@ -33,15 +33,23 @@ app.post('/webhook', (req, res) => {
         const senderId = event.sender?.id;
         const message = event.message?.text;
 
+        // ✅ Only respond to user messages (ignore messages sent by the page itself)
         const isFromPage = event.sender && event.sender.id === entry.id;
         if (!message || isFromPage) return;
 
+        // Optionally log the message
         console.log(`[FB] Message from ${senderId}: ${message}`);
 
-        // Just echo the message back or give a canned response
-        const reply = `You said: "${message}"\nNexa will soon be ready to help you with energy updates.`;
-
-        sendTextMessage(senderId, reply);
+        // Send the message to Dialogflow and handle the response
+        sendToDialogflow(message)
+          .then(dialogflowResponse => {
+            // Send Dialogflow response back to the user
+            sendTextMessage(senderId, dialogflowResponse);
+          })
+          .catch(error => {
+            console.error('Error processing Dialogflow response:', error);
+            sendTextMessage(senderId, "Sorry, something went wrong. Please try again later.");
+          });
       });
     });
     res.sendStatus(200);
@@ -49,50 +57,11 @@ app.post('/webhook', (req, res) => {
   }
 
   // ---------- 2. Dialogflow webhook ----------
-  const parameters = req.body.queryResult?.parameters || {};
-  const intentName = req.body.queryResult?.intent?.displayName || '';
-  const intent = intentName.toLowerCase().replace(/\s+/g, '_');
-  const room = parameters['room'];
-  const device = parameters['device_type'];
-
-  let response = '';
-
-  if (intent === 'report_status') {
-    if (room && device) {
-      response = `Your ${device} in the ${room} has used about 2.1 kWh this week. That ${device} is running efficiently today.`;
-    } else if (room) {
-      response = `The ${room} has consumed approximately 5.6 kWh this week. Everything looks normal.`;
-    } else if (device) {
-      response = `Your ${device} has used approximately 1.2 kWh this week. No issues detected.`;
-    } else {
-      response = `I couldn’t find data for that room or device. Could you try specifying another?`;
-    }
-  } else if (intent === 'suggest_improvement') {
-    if (room && device) {
-      response = `To improve energy efficiency, try turning off the ${device} in the ${room} when not in use, and ensure it's well-maintained.`;
-    } else if (device) {
-      response = `For your ${device}, consider using a smart plug to schedule power cycles and reduce standby energy use.`;
-    } else if (room) {
-      response = `In the ${room}, switch to LED bulbs and unplug unused devices to save power.`;
-    } else {
-      response = `You can reduce waste by unplugging idle devices and switching to more efficient appliances.`;
-    }
-  } else if (intent === 'general_energy_tips') {
-    const tips = [
-      "Switch to LED lighting to reduce electricity use.",
-      "Unplug devices when they’re not in use to avoid phantom loads.",
-      "Use natural light during the day to cut lighting costs.",
-      "Set your thermostat 1–2°C lower to save energy on heating.",
-      "Do full laundry loads instead of multiple small ones.",
-      "Switch to energy-efficient appliances for long-term savings."
-    ];
-    const randomTip = tips[Math.floor(Math.random() * tips.length)];
-    response = `Here's a tip: ${randomTip}`;
-  } else {
-    response = "I'm not sure how to help with that yet, but I'm learning more every day!";
-  }
-
-  res.json({ fulfillmentText: response });
+  // If Dialogflow is configured to send a webhook back to the same endpoint,
+  // you would handle its response here. However, if you only want to trigger
+  // Dialogflow from Messenger and get the response back to Messenger, you
+  // might not need to process a Dialogflow webhook here.
+  res.sendStatus(200); // Acknowledge receipt of any POST request
 });
 
 // Function to send a text message back to the user on Messenger
@@ -115,6 +84,47 @@ function sendTextMessage(senderId, text) {
     } else {
       console.log(`✅ Message sent to ${senderId}: "${text}"`);
     }
+  });
+}
+
+// Function to send the user's message to Dialogflow and get a response
+function sendToDialogflow(message) {
+  return new Promise((resolve, reject) => {
+    const dialogflowUrl = 'https://api.dialogflow.com/v1/query?v=20150910';
+    const dialogflowToken = ''; // Removed the hardcoded token
+
+    const body = {
+      query: message,
+      lang: 'en',
+      sessionId: 'FACEBOOK_USER_' + Math.random().toString(36).substring(7) // Unique session ID per user
+    };
+
+    const headers = {
+      'Content-Type': 'application/json'
+    };
+
+    // Conditionally add Authorization header if you have a token (though you said you don't want to ask for it)
+    if (dialogflowToken) {
+      headers['Authorization'] = `Bearer ${dialogflowToken}`;
+    }
+
+    request({
+      url: dialogflowUrl,
+      method: 'POST',
+      headers: headers,
+      json: body
+    }, (error, response, body) => {
+      if (error || response.statusCode !== 200) {
+        reject(error || body);
+      } else {
+        const fulfillmentText = body?.result?.fulfillment?.speech; // Dialogflow response
+        if (fulfillmentText) {
+          resolve(fulfillmentText);
+        } else {
+          resolve("No response from Dialogflow.");
+        }
+      }
+    });
   });
 }
 

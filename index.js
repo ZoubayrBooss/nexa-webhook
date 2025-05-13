@@ -5,7 +5,7 @@ const request = require('request');
 const app = express();
 app.use(bodyParser.json());
 
-const PAGE_ACCESS_TOKEN = 'EAAJnNHZAdC1kBO5dNG5cgAs76bDSHqbjlpoACZBZC9HavCexnX1RUnNoGvI1ZA7TsoAa2ujfGwf9HGqos6uVuZCJQ1JfEP0VqDm360gmQygDRo4g7i6ZAQDnMiORXm1UvTWiTlSoVG5gBE937x0Vv7uraP97wPNh1LA5zVWqgKgcD4YOZAMyr4B53HMzlJYZAIrX5wZDZD'; // Replace with your actual token
+const PAGE_ACCESS_TOKEN = 'EAAJnNHZAdC1kBO5dNG5cgAs76bDSHqbjlpoACZBZC9HavCexnX1RUnNoGvI1ZA7TsoAa2ujfGwf9HGqos6uVuZCJQ1JfEP0VqDm360gmQygDRo4g7i6ZAQDnMiORXm1UvTWiTlSoVG5gBE937x0Vv7uraP97wPNh1LA5zVWqgKgcD4YOZAMyr4B53HMzlJYZAIrX5wZDZD'; 
 
 // Facebook webhook verification
 app.get('/webhook', (req, res) => {
@@ -16,29 +16,39 @@ app.get('/webhook', (req, res) => {
   const challenge = req.query['hub.challenge'];
 
   if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-    console.log('Webhook verified');
+    console.log('✅ Webhook verified');
     res.status(200).send(challenge);
   } else {
     res.sendStatus(403);
   }
 });
 
-// POST /webhook for both Facebook & Dialogflow
+// POST webhook (Facebook + Dialogflow)
 app.post('/webhook', (req, res) => {
-  // Check if it's from Facebook Messenger
-  req.body.entry.forEach(entry => {
-    const messaging = entry.messaging[0];
-    const senderId = messaging.sender.id;
-    const message = messaging.message?.text || '';
-  
-    // Avoid replying to bot's own message (to prevent spam)
-    if (senderId !== '594054900466217') {
-      sendTextMessage(senderId, `You said: ${message}`);
-    }
-  });
-  
+  // ---------- 1. Facebook Messenger webhook ----------
+  if (req.body.object === 'page') {
+    req.body.entry.forEach(entry => {
+      const messagingEvents = entry.messaging || [];
+      messagingEvents.forEach(event => {
+        const senderId = event.sender?.id;
+        const message = event.message?.text;
 
-  // Else, assume it's Dialogflow webhook
+        // ✅ Only respond to user messages (ignore messages sent by the page itself)
+        const isFromPage = event.sender && event.sender.id === entry.id;
+        if (!message || isFromPage) return;
+
+        // Optionally log the message
+        console.log(`[FB] Message from ${senderId}: ${message}`);
+
+        // Respond
+        sendTextMessage(senderId, `You said: ${message}`);
+      });
+    });
+    res.sendStatus(200);
+    return;
+  }
+
+  // ---------- 2. Dialogflow webhook ----------
   const parameters = req.body.queryResult?.parameters || {};
   const intentName = req.body.queryResult?.intent?.displayName || '';
   const intent = intentName.toLowerCase().replace(/\s+/g, '_');
@@ -85,7 +95,7 @@ app.post('/webhook', (req, res) => {
   res.json({ fulfillmentText: response });
 });
 
-// Function to send text message on Messenger
+// Function to send a text message back to the user on Messenger
 function sendTextMessage(senderId, text) {
   const messageData = {
     recipient: { id: senderId },
@@ -99,20 +109,22 @@ function sendTextMessage(senderId, text) {
     json: messageData,
   }, (error, response, body) => {
     if (error) {
-      console.log('Error sending message: ', error);
+      console.error('❌ Error sending message:', error);
     } else if (response.body.error) {
-      console.log('Error response body: ', response.body.error);
+      console.error('❌ Facebook response error:', response.body.error);
+    } else {
+      console.log(`✅ Message sent to ${senderId}: "${text}"`);
     }
   });
 }
 
-// Listen on Render or local port
+// Start the server
 const port = process.env.PORT || 8080;
 app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+  console.log(`🚀 Nexa server running on port ${port}`);
 });
 
-// Catch any unexpected errors
+// Catch unhandled exceptions
 process.on('uncaughtException', (err) => {
   console.error('Uncaught Exception:', err.message);
   console.error(err.stack);

@@ -5,7 +5,7 @@ const request = require('request');
 const app = express();
 app.use(bodyParser.json());
 
-const PAGE_ACCESS_TOKEN = 'EAAJnNHZAdC1kBO5dNG5cgAs76bDSHqbjlpoACZBZC9HavCexnX1RUnNoGvI1ZA7TsoAa2ujfGwf9HGqos6uVuZCJQ1JfEP0VqDm360gmQygDRo4g7i6ZAQDnMiORXm1UvTWiTlSoVG5gBE937x0Vv7uraP97wPNh1LA5zVWqgKgcD4YOZAMyr4B53HMzlJYZAIrX5wZDZD'; 
+const PAGE_ACCESS_TOKEN = 'EAAJnNHZAdC1kBO5dNG5cgAs76bDSHqbjlpoACZBZC9HavCexnX1RUnNoGvI1ZA7TsoAa2ujfGwf9HGqos6uVuZCJQ1JfEP0VqDm360gmQygDRo4g7i6ZAQDnMiORXm1UvTWiTlSoVG5gBE937x0Vv7uraP97wPNh1LA5zVWqgKgcD4YOZAMyr4B53HMzlJYZAIrX5wZDZD';
 
 // Facebook webhook verification
 app.get('/webhook', (req, res) => {
@@ -23,7 +23,7 @@ app.get('/webhook', (req, res) => {
   }
 });
 
-// POST webhook (Facebook + Dialogflow)
+// POST webhook
 app.post('/webhook', (req, res) => {
   // ---------- 1. Facebook Messenger webhook ----------
   if (req.body.object === 'page') {
@@ -33,23 +33,15 @@ app.post('/webhook', (req, res) => {
         const senderId = event.sender?.id;
         const message = event.message?.text;
 
-        // ✅ Only respond to user messages (ignore messages sent by the page itself)
         const isFromPage = event.sender && event.sender.id === entry.id;
         if (!message || isFromPage) return;
 
-        // Optionally log the message
         console.log(`[FB] Message from ${senderId}: ${message}`);
 
-        // Send the message to Dialogflow and handle the response
-        sendToDialogflow(message)
-          .then(dialogflowResponse => {
-            // Send Dialogflow response back to the user
-            sendTextMessage(senderId, dialogflowResponse);
-          })
-          .catch(error => {
-            console.error('Error processing Dialogflow response:', error);
-            sendTextMessage(senderId, "Sorry, something went wrong. Please try again later.");
-          });
+        // Just echo the message back or give a canned response
+        const reply = `You said: "${message}"\nNexa will soon be ready to help you with energy updates.`;
+
+        sendTextMessage(senderId, reply);
       });
     });
     res.sendStatus(200);
@@ -123,37 +115,6 @@ function sendTextMessage(senderId, text) {
     } else {
       console.log(`✅ Message sent to ${senderId}: "${text}"`);
     }
-  });
-}
-
-// Function to send the user's message to Dialogflow and get a response
-function sendToDialogflow(message) {
-  return new Promise((resolve, reject) => {
-    const dialogflowUrl = 'https://api.dialogflow.com/v1/query?v=20150910';
-    const dialogflowToken = 'YOUR_DIALOGFLOW_ACCESS_TOKEN'; // Replace with your Dialogflow token
-
-    const body = {
-      query: message,
-      lang: 'en',
-      sessionId: '12345'  // Session ID, ideally dynamic or user-specific
-    };
-
-    request({
-      url: dialogflowUrl,
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${dialogflowToken}`,
-        'Content-Type': 'application/json'
-      },
-      json: body
-    }, (error, response, body) => {
-      if (error || response.statusCode !== 200) {
-        reject(error || body);
-      } else {
-        const fulfillmentText = body.result.fulfillment.speech; // Dialogflow response
-        resolve(fulfillmentText);
-      }
-    });
   });
 }
 

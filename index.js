@@ -1,16 +1,17 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const request = require('request');
+const axios = require('axios');
+let simulationData = {};
 
 const app = express();
 app.use(bodyParser.json());
 
-const PAGE_ACCESS_TOKEN = 'EAAJnNHZAdC1kBO5dNG5cgAs76bDSHqbjlpoACZBZC9HavCexnX1RUnNoGvI1ZA7TsoAa2ujfGwf9HGqos6uVuZCJQ1JfEP0VqDm360gmQygDRo4g7i6ZAQDnMiORXm1UvTWiTlSoVG5gBE937x0Vv7uraP97wPNh1LA5zVWqgKgcD4YOZAMyr4B53HMzlJYZAIrX5wZDZD';
+const PAGE_ACCESS_TOKEN = 'EAAJnNHZAdC1kBO5dNG5cgAs76bDSHqbjlpoACZBZC9HavCexnX1RUnNoGvI1ZA7TsoAa2ujfGwf9HGqos6uVuZCJQ1JfEP0VqDm360gmQygDRo4g7i6ZAQDnMiORXm1UvTWiTlSoVG5gBE937x0Vv7uraP97wPNh1LA5zVWqgKgcD4YOZAMyr4B53HMzlJYZAIrX5wZDZD'; // Secure this in production
 
 // Facebook webhook verification
 app.get('/webhook', (req, res) => {
   const VERIFY_TOKEN = 'PFAOP';
-
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
@@ -23,9 +24,9 @@ app.get('/webhook', (req, res) => {
   }
 });
 
-// POST webhook (Facebook + Dialogflow)
-app.post('/webhook', (req, res) => {
-  // ---------- 1. Facebook Messenger webhook ----------
+// POST webhook (Messenger & Dialogflow)
+app.post('/webhook', async (req, res) => {
+  // ---------- 1. Facebook Messenger ----------
   if (req.body.object === 'page') {
     req.body.entry.forEach(entry => {
       const messagingEvents = entry.messaging || [];
@@ -33,38 +34,124 @@ app.post('/webhook', (req, res) => {
         const senderId = event.sender?.id;
         const message = event.message?.text;
 
-        // ✅ Only respond to user messages (ignore messages sent by the page itself)
         const isFromPage = event.sender && event.sender.id === entry.id;
         if (!message || isFromPage) return;
 
-        // Optionally log the message
         console.log(`[FB] Message from ${senderId}: ${message}`);
-
-        // Send the message to Dialogflow and handle the response
-        sendToDialogflow(message)
-          .then(dialogflowResponse => {
-            // Send Dialogflow response back to the user
-            sendTextMessage(senderId, dialogflowResponse);
-          })
-          .catch(error => {
-            console.error('Error processing Dialogflow response:', error);
-            sendTextMessage(senderId, "Sorry, something went wrong. Please try again later.");
-          });
+        const staticResponse = "This feature is no longer freely available, thanks Google Cloud.";
+        sendTextMessage(senderId, staticResponse);
       });
     });
-    res.sendStatus(200);
-    return;
-  }
 
-  // ---------- 2. Dialogflow webhook ----------
-  // If Dialogflow is configured to send a webhook back to the same endpoint,
-  // you would handle its response here. However, if you only want to trigger
-  // Dialogflow from Messenger and get the response back to Messenger, you
-  // might not need to process a Dialogflow webhook here.
-  res.sendStatus(200); // Acknowledge receipt of any POST request
+    return res.sendStatus(200);
+  }
+  ///Getting info from the simul
+app.post('/simulation', (req, res) => {
+  const payload = req.body;
+
+  // Store or update latest simulation data
+  simulationData = payload;
+
+  console.log("📡 Simulation data received:");
+  console.log(JSON.stringify(payload, null, 2));
+
+  res.sendStatus(200);
 });
 
-// Function to send a text message back to the user on Messenger
+  // ---------- 2. Dialogflow Fulfillment ----------
+const parameters = req.body.queryResult?.parameters || {};
+const intentName = req.body.queryResult?.intent?.displayName || '';
+const intent = intentName.toLowerCase().replace(/\s+/g, '_');
+const room = parameters['room'];
+const device = parameters['device_type'];
+
+let responseText = '';
+
+if (intent === 'report_status') {
+  try {
+    const simResponse = await axios.post('http://localhost:5000/simulate', {
+      type: 'status',
+      room,
+      device,
+    });
+
+    if (!simResponse.data || !simResponse.data.response || !simResponse.data.response.data) {
+      responseText = `I couldn’t find data for that room or device. Could you try specifying another?`;
+    } else {
+      const { room: resRoom, device: resDevice, usage, unit, devices } = simResponse.data.response.data;
+
+      if (devices) {
+        // Room-level report
+        const deviceList = devices.map(d =>
+          `${d.device} (${d.usage}${d.unit})`
+        ).join(', ');
+        responseText = `In the ${resRoom}, the devices are consuming: ${deviceList}.`;
+      } else if (resRoom && resDevice && usage !== undefined) {
+        // Device in room
+        responseText = `The ${resDevice} in the ${resRoom} is currently using ${usage}${unit}.`;
+      } else if (resDevice && usage !== undefined) {
+        // Only device
+        responseText = `The ${resDevice} is using about ${usage}${unit}.`;
+      } else {
+        responseText = `I couldn't determine the energy usage details.`;
+      }
+    }
+  } catch (err) {
+    console.error('❌ Error handling report_status:', err.message);
+    responseText = `Something went wrong while checking the status. Please try again later.`;
+  }
+} } else if (intent === 'suggest_improvement') {
+  try {
+    const simResponse = await axios.post('http://localhost:5000/simulate', {
+      type: 'all'
+    });
+
+    const simulationData = simResponse.data?.response?.data; // Ensure this is safe
+    if (!simulationData || !simulationData.rooms) {
+      responseText = "I don't have the latest energy data yet.";
+    } else {
+      const allDevices = [];
+      Object.entries(simulationData.rooms).forEach(([roomName, devices]) => {
+        devices.forEach(device => allDevices.push({ room: roomName, ...device }));
+      });
+
+      const highest = allDevices
+        .filter(d => d.state === 'on')
+        .sort((a, b) => b.power - a.power)[0];
+
+      if (highest) {
+        const { device: topDevice, room: resRoom, power: usage } = highest;
+        responseText = `Your highest consuming active device is the ${topDevice} in the ${resRoom}, using ${usage} watts.`;
+
+        // Normalize device names and match tips
+        const deviceTips = {
+          'heater': `Consider lowering the thermostat or using it only when absolutely needed.`,
+          'tv': `Turn off the TV when not watching or switch to energy-saving mode.`,
+          'light': `Turn off the lights when leaving the ${resRoom || 'room'} or use motion sensors.`,
+          'fridge': `Ensure the fridge door seals are tight and don't overload it.`,
+          'air_conditioner': `Close doors and windows while it’s running, and keep filters clean.`,
+          'computer': `Shut it down when not in use or enable sleep mode.`,
+          'charger': `Unplug chargers when not charging to avoid phantom loads.`,
+        };
+
+        const tipKey = Object.keys(deviceTips).find(k => topDevice.toLowerCase().includes(k));
+        const tip = deviceTips[tipKey] || `Try turning off or unplugging idle devices when not in use.`;
+        responseText += ` ${tip}`;
+      } else {
+        responseText = "All devices are currently off or consuming minimal power.";
+      }
+    }
+  } catch (err) {
+    console.error('❌ Error during improvement suggestion:', err.message);
+    responseText = `I couldn’t generate improvement suggestions right now. Please try again shortly.`;
+  }
+}
+
+
+  res.json({ fulfillmentText: responseText });
+});
+
+// Send static text back to Messenger
 function sendTextMessage(senderId, text) {
   const messageData = {
     recipient: { id: senderId },
@@ -87,56 +174,28 @@ function sendTextMessage(senderId, text) {
   });
 }
 
-// Function to send the user's message to Dialogflow and get a response
-function sendToDialogflow(message) {
-  return new Promise((resolve, reject) => {
-    const dialogflowUrl = 'https://api.dialogflow.com/v1/query?v=20150910';
-    const dialogflowToken = ''; // Removed the hardcoded token
-
-    const body = {
-      query: message,
-      lang: 'en',
-      sessionId: 'FACEBOOK_USER_' + Math.random().toString(36).substring(7) // Unique session ID per user
-    };
-
-    const headers = {
-      'Content-Type': 'application/json'
-    };
-
-    // Conditionally add Authorization header if you have a token (though you said you don't want to ask for it)
-    if (dialogflowToken) {
-      headers['Authorization'] = `Bearer ${dialogflowToken}`;
-    }
-
-    request({
-      url: dialogflowUrl,
-      method: 'POST',
-      headers: headers,
-      json: body
-    }, (error, response, body) => {
-      if (error || response.statusCode !== 200) {
-        reject(error || body);
-      } else {
-        const fulfillmentText = body?.result?.fulfillment?.speech; // Dialogflow response
-        if (fulfillmentText) {
-          resolve(fulfillmentText);
-        } else {
-          resolve("No response from Dialogflow.");
-        }
-      }
-    });
-  });
+// Fetch data from your Python simulation
+async function fetchFromPythonSimulation(type, room, device) {
+  try {
+    const res = await axios.post('http://localhost:5000/simulate', {
+      type, room, device
+    }, { timeout: 5000 });  // Timeout after 5 seconds
+    return res.data.response;
+  } catch (err) {
+    console.error('❌ Error fetching from simulation:', err.message);
+    return null;
+  }
 }
 
-// Start the server
+
+// Start server
 const port = process.env.PORT || 8080;
 app.listen(port, () => {
   console.log(`🚀 Nexa server running on port ${port}`);
 });
 
-// Catch unhandled exceptions
-process.on('uncaughtException', (err) => {
-  console.error('Uncaught Exception:', err.message);
+// Crash handling
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled Rejection:', err.message);
   console.error(err.stack);
-  process.exit(1);
 });

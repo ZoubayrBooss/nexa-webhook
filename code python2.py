@@ -1,6 +1,9 @@
+from flask import Flask, request, jsonify
+from threading import Thread
+from flask_cors import CORS
+import requests
 import time
 from collections import defaultdict
-import requests  # Pour l'envoi réel via API
 
 # ---------- 1. Définition initiale des pièces et appareils ----------
 rooms = {
@@ -94,7 +97,6 @@ def simulate_power_usage(rooms):
             if device["state"] == "on":
                 total += device["power"]
     return total
-
 # ---------- 4. Consommation par pièce ----------
 def get_power_by_room(rooms):
     summary = {}
@@ -110,22 +112,19 @@ def accumulate_device_usage(device_usage, rooms):
             if device["state"] == "on":
                 device_usage[device["device"]] += device["power"]
     return device_usage
-
 # ---------- 6. Envoi simulé à Nexa ----------
 def send_power_to_nexa(total_power, hour, rooms, room_powers, device_usage):
     print(f"[{hour:02d}h] ➜ Current consumption: {total_power} W (sent to Nexa)")
-    
     try:
-        # Building the response to send
         payload = {
             "hour": hour,
             "total_power": total_power,
             "room_power": room_powers,
             "rooms": rooms,
-            "device_usage": device_usage  # Adding device usage data for the backend
+            "device_usage": device_usage
         }
         
-        response = requests.post("http://localhost:8080/simulation", json=payload)
+        response = requests.post("http://localhost:5000/simulation", json=payload)
         if response.status_code == 200:
             print("   ✅ Data sent to Nexa (VS Code)")
         else:
@@ -133,11 +132,21 @@ def send_power_to_nexa(total_power, hour, rooms, room_powers, device_usage):
     except Exception as e:
         print(f"   ❌ Error while sending to Nexa: {e}")
 
+
 # ---------- 7. Simulation multi-jours ----------
 season = "hiver"
-jours_simulation = 4
+jours_simulation = 1
 device_usage = defaultdict(int)
-delay_per_hour = 1.0  # ← adjust this (seconds delay between simulated hours)
+delay_per_hour = 0.2  # ← adjust this (seconds delay between simulated hours)
+# ---------- Start Flask in the background ----------
+app = Flask(__name__)
+def run_flask():
+     print("🚀 Starting Flask server...")
+     CORS(app)
+     app.run(host='0.0.0.0', port=5000)
+flask_thread = Thread(target=run_flask)
+flask_thread.daemon = True
+flask_thread.start()
 
 for day in range(1, jours_simulation + 1):
     print(f"\n📅 Day {day}")
@@ -156,10 +165,8 @@ for day in range(1, jours_simulation + 1):
     print(f"\n📊 Day {day} Summary: Cumulative device power usage:")
     for dev, total in sorted(device_usage.items(), key=lambda x: -x[1]):
         print(f"   {dev:20s} : {total} W")
-from flask import Flask, request, jsonify
-from threading import Thread
+        
 
-app = Flask(__name__)
 
 @app.route('/simulate', methods=['POST'])
 def simulate_endpoint():
@@ -203,10 +210,4 @@ def simulate_endpoint():
                         }})
     return jsonify(response={"data": None})
 
-# Run Flask app in a background thread
-def run_flask():
-    app.run(port=5000)
 
-flask_thread = Thread(target=run_flask)
-flask_thread.daemon = True
-flask_thread.start()

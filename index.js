@@ -100,7 +100,7 @@ if (intent === 'report_status') {
     console.error('❌ Error handling report_status:', err.message);
     responseText = `Something went wrong while checking the status. Please try again later.`;
   }
-} } else if (intent === 'suggest_improvement') {
+} else if (intent === 'suggest_improvement') {
   try {
     const simResponse = await axios.post('http://localhost:5000/simulate', {
       type: 'all'

@@ -243,7 +243,7 @@ def ping():
 def run_flask():
     print("🚀 Starting Flask server...")
     CORS(app)
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
 
 flask_thread = Thread(target=run_flask)
 flask_thread.daemon = True

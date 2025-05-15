@@ -66,7 +66,7 @@ app.post('/webhook', async (req, res) => {
         type: 'status',
         room,
         device,
-      });
+      },{ timeout: 10000 });
 
       if (!simResponse.data || !simResponse.data.response || !simResponse.data.response.data) {
         responseText = `I couldn’t find data for that room or device. Could you try specifying another?`;

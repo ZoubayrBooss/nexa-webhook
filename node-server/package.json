@@ -1,0 +1,33 @@
+{
+  "name": "nexa-webhook",
+  "version": "1.0.0",
+  "description": "Webhook server for Nexa smart home assistant",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "axios": "^1.9.0",
+    "body-parser": "^1.20.3",
+    "cors": "^2.8.5",
+    "dotenv": "^8.2.0",
+    "express": "^4.21.2",
+    "node-fetch": "^2.6.7",
+    "request": "^2.88.2"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  },
+  "author": "Zoubayr Ridha",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ZoubayrBooss/nexa-webhook.git"
+  },
+  "keywords": [],
+  "bugs": {
+    "url": "https://github.com/ZoubayrBooss/nexa-webhook/issues"
+  },
+  "homepage": "https://github.com/ZoubayrBooss/nexa-webhook#readme"
+}

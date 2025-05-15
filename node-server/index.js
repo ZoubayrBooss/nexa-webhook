@@ -65,7 +65,7 @@ app.post('/webhook', async (req, res) => {
 
   if (intent === 'report_status') {
     try {
-      const simResponse = await axios.post('http://localhost:5000/simulation', {
+      const simResponse = await axios.post('https://nexa-python.onrender.com', {
         type: 'status',
         room,
         device,
@@ -96,9 +96,11 @@ app.post('/webhook', async (req, res) => {
 
   } else if (intent === 'suggest_improvement') {
     try {
-      const simResponse = await axios.post('http://localhost:5000/simulation', {
-        type: 'all'
-      });
+     const simResponse = await axios.post('https://nexa-python.onrender.com', {
+        type: 'status',
+        room,
+        device,
+      },{ timeout: 30000 });
 
       const simulationData = simResponse.data;
 
@@ -139,7 +141,7 @@ app.post('/webhook', async (req, res) => {
     const randomIndex = Math.floor(Math.random() * tips.length);
     responseText = `💡 Energy-saving tip: ${tips[randomIndex]}`;
 
-  } else if (intent === 'device_info') {
+  }  else if (intent === 'device_info') {
     const deviceConsumption = {
       "light": { usage: 0.06, unit: "kWh", note: "for an LED bulb" },
       "fan": { usage: 0.075, unit: "kWh", note: "for a standard ceiling fan" },
@@ -151,18 +153,16 @@ app.post('/webhook', async (req, res) => {
       "microwave": { usage: 1.0, unit: "kWh", note: "per hour of use" }
     };
 
-    const lowerDevice = (device || '').toLowerCase();
+    const lowerDevice = (device || '').toLowerCase().trim();
     const data = deviceConsumption[lowerDevice];
 
     if (data) {
-      responseText = `The ${device} typically uses about ${data.usage} ${data.unit} per hour — ${data.note}.`;
+      responseText = `📊 The ${lowerDevice} typically consumes about ${data.usage} ${data.unit} per hour — ${data.note}.`;
+    } else if (lowerDevice) {
+      responseText = `⚠️ I don’t have data for the "${lowerDevice}" yet. Try asking about another common appliance like a fridge, fan, or light.`;
     } else {
-      responseText = `I don’t have data for the "${device}" yet. Try asking about another common appliance.`;
-    }
-
-  } else {
-    responseText = `Sorry, I didn't understand that request. Could you try rephrasing?`;
-  }
+      responseText = `❓ I didn't catch the device name. Could you specify which device you're asking about?`;
+    }}
 
   // ✅ Final response back to Dialogflow
   res.json({ fulfillmentText: responseText });
@@ -187,7 +187,7 @@ async function sendTextMessage(senderId, text) {
 // Fetch data from your Python simulation
 async function fetchFromPythonSimulation(type, room, device) {
   try {
-    const res = await axios.post('http://localhost:5000/simulation', {
+    const res = await axios.post('https://nexa-python.onrender.com', {
       type, room, device
     }, { timeout: 60000 });
     return res.data.response;

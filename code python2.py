@@ -11,38 +11,38 @@ ANOMALY_PROBABILITY = 0.02  # 2%
 
 # ---------- 1. Définition initiale des pièces et appareils ----------
 rooms = {
-    "cuisine": [
+    "kitchen": [
         {"device": "frigo", "power": 150, "standby_power": 5, "state": "on"},
-        {"device": "micro-onde", "power": 800, "standby_power": 3, "state": "off"},
-        {"device": "lave-vaisselle", "power": 1200, "standby_power": 4, "state": "off"}
+        {"device": "microwave", "power": 800, "standby_power": 3, "state": "off"},
+        {"device": "washing machine", "power": 1200, "standby_power": 4, "state": "off"}
     ],
     "salon": [
         {"device": "TV", "power": 120, "standby_power": 8, "state": "off"},
-        {"device": "lumière", "power": 60, "standby_power": 1, "state": "off"},
+        {"device": "lights", "power": 60, "standby_power": 1, "state": "off"},
         {"device": "console", "power": 100, "standby_power": 6, "state": "off"}
     ],
-    "chambre_enfants": [
-        {"device": "lumière", "power": 40, "standby_power": 1, "state": "off"},
-        {"device": "ordinateur", "power": 60, "standby_power": 10, "state": "off"},
-        {"device": "chauffage", "power": 1500, "standby_power": 0, "state": "off"}
+    "kids' room": [
+        {"device": "lights", "power": 40, "standby_power": 1, "state": "off"},
+        {"device": "pc", "power": 60, "standby_power": 10, "state": "off"},
+        {"device": "heater", "power": 1500, "standby_power": 0, "state": "off"}
     ],
-    "toilette": [
-        {"device": "lumière", "power": 20, "standby_power": 1, "state": "off"}
+    "restroom": [
+        {"device": "lights", "power": 20, "standby_power": 1, "state": "off"}
     ],
-    "salle_de_bain": [
-        {"device": "chauffe-eau", "power": 2000, "standby_power": 5, "state": "off"},
-        {"device": "lumière", "power": 30, "standby_power": 1, "state": "off"},
-        {"device": "miroir_lumineux", "power": 15, "standby_power": 1, "state": "off"}
+    "bathroom": [
+        {"device": "water heater", "power": 2000, "standby_power": 5, "state": "off"},
+        {"device": "lights", "power": 30, "standby_power": 1, "state": "off"},
+        {"device": "luminating mirror", "power": 15, "standby_power": 1, "state": "off"}
     ],
-    "chambre_parent": [
-        {"device": "lumière", "power": 40, "standby_power": 1, "state": "off"},
-        {"device": "chauffage", "power": 1500, "standby_power": 0, "state": "off"},
-        {"device": "téléphone", "power": 10, "standby_power": 1, "state": "off"}
+    "bedroom": [
+        {"device": "lights", "power": 40, "standby_power": 1, "state": "off"},
+        {"device": "heater", "power": 1500, "standby_power": 0, "state": "off"},
+        {"device": "phone", "power": 10, "standby_power": 1, "state": "off"}
     ],
     "garage": [
-        {"device": "congélateur", "power": 200, "standby_power": 5, "state": "on"},
-        {"device": "lumière", "power": 50, "standby_power": 1, "state": "off"},
-        {"device": "machine à laver", "power": 1000, "standby_power": 4, "state": "off"}
+        {"device": "freezer", "power": 200, "standby_power": 5, "state": "on"},
+        {"device": "lights", "power": 50, "standby_power": 1, "state": "off"},
+        {"device": "washing machine", "power": 1000, "standby_power": 4, "state": "off"}
     ]
 }
 
@@ -53,61 +53,61 @@ def toggle_devices_by_hour(rooms, hour, season):
             name = device["device"]
 
             # cuisine
-            if room_name == "cuisine":
-                if name == "frigo":
+            if room_name == "kitchen":
+                if name == "fridge":
                     device["state"] = "on"
-                elif name == "micro-onde":
+                elif name == "microwave":
                     device["state"] = "on" if (hour == 12 and random.random() < 0.7) else "off"
-                elif name == "lave-vaisselle":
+                elif name == "washing machine":
                     device["state"] = "on" if (20 <= hour <= 21 and random.random() < 0.6) else "off"
 
             # salon
-            elif room_name == "salon":
+            elif room_name == "living room":
                 if name == "TV":
                     device["state"] = "on" if (18 <= hour <= 22 and random.random() < 0.8) else "off"
-                elif name == "lumière":
+                elif name == "lights":
                     device["state"] = "on" if (hour >= 19 or hour <= 6) and (random.random() < 0.9) else "off"
                 elif name == "console":
                     device["state"] = "on" if (20 <= hour <= 22 and random.random() < 0.5) else "off"
 
             # chambre_enfants
-            elif room_name == "chambre_enfants":
-                if name == "lumière":
+            elif room_name == "kids' bedroom":
+                if name == "lights":
                     device["state"] = "on" if (19 <= hour <= 22 and random.random() < 0.75) else "off"
-                elif name == "ordinateur":
+                elif name == "pc":
                     device["state"] = "on" if (17 <= hour <= 20 and random.random() < 0.65) else "off"
-                elif name == "chauffage":
+                elif name == "heater":
                     device["state"] = "on" if season == "hiver" and (6 <= hour <= 7 or 20 <= hour <= 22) else "off"
 
             # toilette
-            elif room_name == "toilette":
+            elif room_name == "restroom":
                 device["state"] = "on" if ((6 <= hour <= 8 or 18 <= hour <= 22) and random.random() < 0.8) else "off"
 
             # salle_de_bain
-            elif room_name == "salle_de_bain":
-                if name == "chauffe-eau":
+            elif room_name == "bathroom":
+                if name == "water heater":
                     device["state"] = "on" if season in ["hiver", "automne"] and 6 <= hour <= 7 else "off"
-                elif name == "lumière":
+                elif name == "lights":
                     device["state"] = "on" if (6 <= hour <= 8 or 18 <= hour <= 22) else "off"
-                elif name == "miroir_lumineux":
+                elif name == "luminating mirror":
                     device["state"] = "on" if hour == 7 else "off"
 
             # chambre_parent
-            elif room_name == "chambre_parent":
-                if name == "lumière":
+            elif room_name == "bedroom":
+                if name == "lights":
                     device["state"] = "on" if 20 <= hour <= 23 or hour == 0 else "off"
-                elif name == "chauffage":
+                elif name == "heater":
                     device["state"] = "on" if season == "hiver" and (5 <= hour <= 7 or 22 <= hour <= 23 or hour == 0) else "off"
-                elif name == "téléphone":
+                elif name == "phone":
                     device["state"] = "on" if hour >= 22 or hour <= 6 else "off"
 
             # garage
             elif room_name == "garage":
-                if name == "congélateur":
+                if name == "freezer":
                     device["state"] = "on"
-                elif name == "lumière":
+                elif name == "lights":
                     device["state"] = "on" if 6 <= hour <= 8 or 18 <= hour <= 20 else "off"
-                elif name == "machine à laver":
+                elif name == "washing machine":
                     device["state"] = "on" if (season != "été" and 14 <= hour <= 15) or (season == "été" and 10 <= hour <= 11) else "off"
 
     return rooms
@@ -125,7 +125,7 @@ def simulate_power_usage(rooms):
             # Base power consumption depending on state
             base_power = device["power"] if device["state"] == "on" else device.get("standby_power", 0)
 
-            # Check if anomaly occurs
+            # Checking if anomaly occurs
             if random.random() < ANOMALY_PROBABILITY:
                 anomalies += 1
                 anomaly_factor = random.uniform(0.8, 1.2)  # +/- 20% variation
@@ -168,13 +168,13 @@ def accumulate_device_usage(device_usage, rooms):
 def generate_energy_saving_recommendations(rooms, device_usage):
     recommendations = []
 
-    # Example rule 1: Lights on during daytime (assume daytime 7h to 19h)
+    # Example rule 1: Lights on during daytime (assuming daytime 7h to 19h)
     for room, devices in rooms.items():
         for device in devices:
-            if 'lumière' in device['device'].lower() and device['state'] == 'on':
+            if 'lights' in device['device'].lower() and device['state'] == 'on':
                 # If lights are on during daytime hours (let's say hour is available)
                 # We don't have hour here, so let's recommend if usage is high in general
-                if device_usage[device['device']] > 1000:  # arbitrary threshold, adjust as needed
+                if device_usage[device['device']] > 1000:  # arbitrary threshold, we will adjust it as needed
                     recommendations.append(
                         f"Consider turning off the lights in the {room} when not needed during the day."
                     )
@@ -188,14 +188,12 @@ def generate_energy_saving_recommendations(rooms, device_usage):
                 )
 
     # Example rule 3: Heating running during uncommon hours
-    # For demo, suggest turning heating off if it ran more than 4 hours (simplified)
-    heating_usage = sum(power for dev, power in device_usage.items() if 'chauffage' in dev.lower())
-    if heating_usage > 4000:  # threshold depends on your scale and simulation duration
+        heating_usage = sum(power for dev, power in device_usage.items() if 'heater' in dev.lower())
+    if heating_usage > 4000:  # threshold depends on our scale and simulation duration
         recommendations.append(
             "Your heating seems to be running a lot. Consider optimizing heating schedules to save energy."
         )
 
-    # If no recommendations found
     if not recommendations:
         recommendations.append("All devices are used efficiently. No immediate energy saving suggestions.")
 
@@ -227,10 +225,10 @@ def send_power_to_nexa(total_power, anomaly_rate, hour, rooms, room_powers, devi
 
 
 # ---------- 8. Simulation multi-jours ----------
-season = "hiver"
+season = "hiver" #ou été etc..
 jours_simulation = 1
 device_usage = defaultdict(int)
-delay_per_hour = 0.2
+delay_per_hour = 60 # 60 seconds
 
 app = Flask(__name__)
 
